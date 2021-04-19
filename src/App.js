@@ -4,6 +4,7 @@ import Task from "./components/Task";
 import Search from "./components/Search";
 import Sort from "./components/Sort";
 import List from "./components/List";
+import _ from 'lodash'
 
 class App extends React.Component {
   constructor(props) {
@@ -11,18 +12,27 @@ class App extends React.Component {
     this.state = {
       tasks: [], //id,name,status
       isDisplayForm: false,
-      taskEditing : null
+      taskEditing: null,
+      filter : {
+        name : '',
+        status : -1
+      },
+      keyword : '',
+      sort : {
+        by : 'name',
+        value : 1
+      }
     };
   }
 
-  componentWillMount= ()=> {
+  componentWillMount = () => {
     if (localStorage && localStorage.getItem("tasks")) {
       var tasks = JSON.parse(localStorage.getItem("tasks"));
       this.setState({
         tasks: tasks,
       });
     }
-  }
+  };
 
   // onGenerateData = () => {
   //   var tasks = [
@@ -62,95 +72,148 @@ class App extends React.Component {
   }
 
   onClicked = () => {
+    //Them task
+    if (this.state.isDisplayForm && this.state.taskEditing !== null) {
+      this.setState({
+        isDisplayForm: true,
+        taskEditing: null,
+      });
+    } else {
+      this.setState({
+        isDisplayForm: !this.state.isDisplayForm,
+        taskEditing: null,
+      });
+    }
+  };
+
+  onCloseForm = () => {
     this.setState({
-      isDisplayForm: !this.state.isDisplayForm,
+      isDisplayForm: false,
     });
   };
 
-  onCloseForm=()=>{
+  onShowForm = () => {
     this.setState({
-      isDisplayForm: false
-    })
-  }
+      isDisplayForm: true,
+    });
+  };
 
-  onShowForm=()=>{
+  onSubmit = (data) => {
+    var tasks = this.state.tasks;
+    if (data.id === "") {
+      data.id = this.generateID();
+      tasks.push(data);
+    } else {
+      //Editing
+      var index = this.findIndex(data.id);
+      tasks[index] = data;
+    }
     this.setState({
-      isDisplayForm: true
-    })
-  }
+      tasks: tasks,
+      taskEditing: null,
+    });
+    localStorage.setItem("tasks", JSON.stringify(tasks));
+  };
 
-  onSubmit =(data)=>{
-    var  tasks  = this.state.tasks;
-      if(data.id === ''){
-        data.id = this.generateID();
-        tasks.push(data);
-      }else{
-        //Editing
-        var index = this.findIndex(data.id);
-        tasks[index] = data
-      }
+  onUpdateStatus = (id) => {
+    var { tasks } = this.state;
+    var index = this.findIndex(id);
+    console.log(index);
+    if (index !== -1) {
+      tasks[index].status = !tasks[index].status;
       this.setState({
-        tasks : tasks,
-        taskEditing : null
+        tasks: tasks,
       });
-      localStorage.setItem('tasks',JSON.stringify(tasks));
+      localStorage.setItem("tasks", JSON.stringify(tasks));
     }
+  };
 
-    onUpdateStatus=(id)=>{
-        var { tasks } = this.state
-        var index = this.findIndex(id)
-        console.log(index)
-        if(index !== -1){
-          tasks[index].status = !tasks[index].status
-          this.setState({
-            tasks : tasks
-          })
-          localStorage.setItem('tasks', JSON.stringify(tasks));
-        }
-    }
-
-    onDelete=(id)=>{
-      var { tasks } = this.state
-        var index = this.findIndex(id)
-        if(index !== -1){
-          tasks.splice(index, 1)
-          this.setState({
-            tasks : tasks
-          })
-          localStorage.setItem('tasks', JSON.stringify(tasks));
-        }
-    }
-
-    findIndex = (id) => {
-      var { tasks } = this.state
-      var result = -1
-      tasks.forEach((task,index)=>{
-        if(task.id === id){
-          result = index
-        }
+  onDelete = (id) => {
+    var { tasks } = this.state;
+    var index = this.findIndex(id);
+    if (index !== -1) {
+      tasks.splice(index, 1);
+      this.setState({
+        tasks: tasks,
       });
-      return result
+      localStorage.setItem("tasks", JSON.stringify(tasks));
     }
+  };
 
-    onUpdate=(id)=>{
-      var { tasks } = this.state
-        var index = this.findIndex(id)
-        var taskEditing = tasks[index];
-        this.setState({
-          taskEditing : taskEditing
-        })
-        this.onShowForm()
-    }
+  findIndex = (id) => {
+    var { tasks } = this.state;
+    var result = -1;
+    tasks.forEach((task, index) => {
+      if (task.id === id) {
+        result = index;
+      }
+    });
+
+    return result;
+  };
+
+  onUpdate = (id) => {
+    var { tasks } = this.state;
+    // var index = this.findIndex(id);
+    var index = _.findIndex(tasks,(task)=>{
+      return task.id === id
+    })
+    var taskEditing = tasks[index];
+    this.setState({
+      taskEditing: taskEditing,
+    });
+    this.onShowForm();
+  };
+
+  onFilter=( filterName,filterStatus )=>{
+   
+    filterStatus = parseInt(filterStatus,10)
+    this.setState({
+      filter : {
+        name : filterName.toLowerCase(),
+      status : filterStatus
+      }     
+    })
+  }
+
+  onSearch=(keyword)=>{
+    this.setState({
+      keyword : keyword
+    })
+  }
 
 
   render() {
-    var { tasks, isDisplayForm, taskEditing } = this.state;
-    var elmTask = isDisplayForm 
-    ? <Task 
-    onSubmit={this.onSubmit} 
-    onCloseForm={this.onCloseForm}
-    task = { taskEditing }
-    /> : "";
+    var { tasks, isDisplayForm, taskEditing, filter, keyword  } = this.state
+    if(filter){
+      if(filter.name){ //!==null 
+        tasks = tasks.filter((task)=>{
+          return task.name.toLowerCase().indexOf(filter.name) !==-1;
+        })
+      }
+      tasks = tasks.filter((task)=>{
+        if(filter.status ===-1){
+          return task;
+        }else{
+          return task.status === (filter.status === 1 ? true : false)
+        }
+      })
+      }
+
+    if(keyword){
+      tasks = tasks.filter((task)=>{
+        return task.name.toLowerCase().indexOf(keyword) !==-1;
+      })
+    }
+    var elmTask = isDisplayForm ? (
+      <Task
+        onSubmit={this.onSubmit}
+        onCloseForm={this.onCloseForm}
+        task={taskEditing}
+      />
+    ) : (
+      ""
+    )
     return (
       <div>
         <br />
@@ -184,7 +247,7 @@ class App extends React.Component {
                   <div className="col-6">
                     <br />
                     {/* Tim kiem */}
-                    <Search></Search>
+                    <Search onSearch= { this.onSearch }></Search>
                   </div>
                   <div className="col-6">
                     <br />
@@ -193,7 +256,13 @@ class App extends React.Component {
                   </div>
                 </div>
                 {/* table */}
-                <List tasks={tasks} onUpdateStatus={ this.onUpdateStatus} onDelete= { this.onDelete } onUpdate= { this.onUpdate }></List>
+                <List
+                  tasks={tasks}
+                  onUpdateStatus={this.onUpdateStatus}
+                  onDelete={this.onDelete}
+                  onUpdate={this.onUpdate}
+                  onFilter={this.onFilter}
+                ></List>
               </div>
             </div>
           </div>

@@ -23,6 +23,23 @@ class Task extends React.Component {
     }
   }
 
+  componentWillReceiveProps(nextProps){
+    if (nextProps && nextProps.task){
+      this.setState({
+        id : nextProps.task.id,
+        name : nextProps.task.name,
+        status : nextProps.task.status
+      })
+
+    }else if(!nextProps.task){
+      this.setState({
+        id : '',
+      name : '',
+      status : false
+      })
+    }
+  }
+
   onCloseForm = () =>{
     this.props.onCloseForm()
   }
@@ -44,7 +61,7 @@ class Task extends React.Component {
     this.props.onSubmit(this.state);
     //cancel & close form
     this.onClear();
-    this.onCloseForm();
+    // this.onCloseForm();
   }
 
   onClear=()=>{
